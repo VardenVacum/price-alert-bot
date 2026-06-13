@@ -1,0 +1,8 @@
+__pycache__
+*.pyc
+.env
+alerts.json
+alerts.log
+.git
+.venv
+venv
