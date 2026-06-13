@@ -28,4 +28,5 @@ LOG_FILE = os.path.join(os.path.dirname(__file__), "alerts.log")
 
 # Binance Futures WebSocket / REST
 BINANCE_FUTURES_TICKER_URL = "https://fapi.binance.com/fapi/v1/ticker/price"
+BINANCE_FUTURES_TICKER_24H_URL = "https://fapi.binance.com/fapi/v1/ticker/24hr"
 BINANCE_FUTURES_KLINES_URL = "https://fapi.binance.com/fapi/v1/klines"

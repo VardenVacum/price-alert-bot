@@ -53,6 +53,7 @@ def _main_menu_keyboard() -> InlineKeyboardMarkup:
                 InlineKeyboardButton("➕ Новый алерт", callback_data="new_alert"),
             ],
             [
+                InlineKeyboardButton("🔥 Топ волатильность", callback_data="top_volatile"),
                 InlineKeyboardButton("🛑 Стоп все", callback_data="stop_all"),
             ],
         ]
@@ -102,9 +103,35 @@ async def cmd_delete(update: Update, context: ContextTypes.DEFAULT_TYPE):
         await update.message.reply_text(f"Алерт {symbol} @ {price} не найден.")
 
 
+async def cmd_top(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """Команда /top — показать топ-15 волатильных фьючерсов."""
+    await _show_top_volatile(update.message)
+
+
 async def cmd_stop(update: Update, context: ContextTypes.DEFAULT_TYPE):
     removed = alert_mgr.delete_user_alerts(update.effective_user.id)
     await update.message.reply_text(f"Удалено алертов: {removed}")
+
+
+async def _show_top_volatile(target):
+    """Показать топ-15 волатильных фьючерсов (для message и callback)."""
+    top = await binance.get_top_volatile(15)
+    if not top:
+        await target.reply_text(
+            "Не удалось получить данные с Binance.",
+            reply_markup=_main_menu_keyboard(),
+        )
+        return
+
+    lines = ["🔥 ТОП-15 ВОЛАТИЛЬНОСТЬ (24ч)\n"]
+    for i, item in enumerate(top, 1):
+        lines.append(
+            f"{i}. {item['symbol']} — {item['volatility']}%  "
+            f"{item['direction']} ${item['price']:,.2f}"
+        )
+    await target.reply_text(
+        "\n".join(lines), reply_markup=_main_menu_keyboard()
+    )
 
 
 async def _show_user_alerts(user_id: int, message):
@@ -218,6 +245,24 @@ async def handle_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             parse_mode="HTML",
         )
 
+    elif query.data == "top_volatile":
+        top = await binance.get_top_volatile(15)
+        if not top:
+            await query.edit_message_text(
+                "Не удалось получить данные с Binance.",
+                reply_markup=_main_menu_keyboard(),
+            )
+            return
+        lines = ["🔥 ТОП-15 ВОЛАТИЛЬНОСТЬ (24ч)\n"]
+        for i, item in enumerate(top, 1):
+            lines.append(
+                f"{i}. {item['symbol']} — {item['volatility']}%  "
+                f"{item['direction']} ${item['price']:,.2f}"
+            )
+        await query.edit_message_text(
+            "\n".join(lines), reply_markup=_main_menu_keyboard()
+        )
+
     elif query.data == "stop_all":
         removed = alert_mgr.delete_user_alerts(user_id)
         await query.edit_message_text(
@@ -284,6 +329,7 @@ async def post_init(app):
         BotCommand("start", "Меню"),
         BotCommand("alert", "Новый алерт"),
         BotCommand("alerts", "Мои алерты"),
+        BotCommand("top", "Топ волатильность"),
         BotCommand("delete", "Удалить алерт"),
         BotCommand("stop", "Стоп все"),
     ]
@@ -307,6 +353,7 @@ def main():
     app.add_handler(CommandHandler("start", cmd_start))
     app.add_handler(CommandHandler("alert", cmd_alert))
     app.add_handler(CommandHandler("alerts", cmd_alerts))
+    app.add_handler(CommandHandler("top", cmd_top))
     app.add_handler(CommandHandler("delete", cmd_delete))
     app.add_handler(CommandHandler("stop", cmd_stop))
     app.add_handler(CallbackQueryHandler(handle_callback))
